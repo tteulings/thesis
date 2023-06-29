@@ -1,0 +1,21 @@
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=zirconium
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=basic-n50-it15-acc-noise5e-7_4
+#SBATCH --error=output/bubble/log/%x-%j.err
+#SBATCH --output=output/bubble/log/%x-%j.out
+
+. "/home/TUE/s131727/miniconda3/etc/profile.d/conda.sh"
+conda activate tggnn
+python3 \
+ -m models.bubble.train.basic \
+ -c output/bubble/basic_n50_it15_acc_noise5e-7.pt \
+ -e 672000 \
+ -it 15 \
+ --noise 5e-7 \
+ --target-acceleration \
+ ~/git/bubble-data/n50
+conda deactivate

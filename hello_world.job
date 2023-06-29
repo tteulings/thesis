@@ -1,0 +1,12 @@
+#!/bin/bash
+
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=zirconium
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=dummy
+#SBATCH --error=output/test/log/%x-%j.err
+#SBATCH --output=output/test/log/%x-%j.out
+
+python3 hello_world.py

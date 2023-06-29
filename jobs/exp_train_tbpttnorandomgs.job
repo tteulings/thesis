@@ -1,0 +1,22 @@
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=calcium
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=notrandomgs-memory-n50-it7-k3-vrem-noise8e-1
+#SBATCH --error=output/experimental/memory/%x-%j.err
+#SBATCH --output=output/experimental/memory/%x-%j.out
+
+. "/home/TUE/20214195/miniconda3/etc/profile.d/conda.sh"
+conda activate tggnn
+python3 \
+ -m experimental.remesh.memory_tbptt_notrandom_notgs \
+ -c output/experimental/memory/notrandom_notgs_n50_it7_k3_vrem_noise8e-1 \
+ -e 336000 \
+ -it 7 \
+ -k 3 \
+ --noise 8e-1 \
+ --remesh-velocity \
+ ~/mirror/bubble-data/
+conda deactivate

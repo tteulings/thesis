@@ -1,0 +1,14 @@
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=zirconium
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=rollout_basic_rem_vel
+#SBATCH --error=output/bubble/log/%x-%j.err
+#SBATCH --output=output/bubble/log/%x-%j.out
+
+. "/home/TUE/s131727/miniconda3/etc/profile.d/conda.sh"
+conda activate tggnn
+python3 -m rollout_all
+conda deactivate

@@ -1,0 +1,22 @@
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=all
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=k200_8e-1_pf_fix
+#SBATCH --error=output/experimental/memory/%x-%j.err
+#SBATCH --output=output/experimental/memory/%x-%j.out
+
+. "/home/TUE/20214195/miniconda3/etc/profile.d/conda.sh"
+conda activate tggnn
+python3 \
+ -m experimental.remesh.memory_tbptt_pf_fix \
+ -c output/experimental/memory/k200_8e-1_pf_fix \
+ -e 336000 \
+ -it 7 \
+ -k 200 \
+ --noise 8e-1 \
+ --remesh-velocity \
+ ~/mirror/bubble-data/
+conda deactivate

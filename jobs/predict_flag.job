@@ -1,0 +1,17 @@
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=zirconium
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=rollout-flag-noise1e-3
+#SBATCH --error=output/flag/log/%x-%j.err
+#SBATCH --output=output/flag/log/%x-%j.out
+
+. "/home/TUE/s131727/miniconda3/etc/profile.d/conda.sh"
+conda activate tggnn
+python3 \
+ -m models.flag.predict \
+ -c output/flag/flag_simple_noise1e-3_new.pt \
+ ~/git/meshgraphnets/data/test/
+conda deactivate

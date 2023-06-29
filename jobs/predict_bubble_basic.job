@@ -1,0 +1,21 @@
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=zirconium
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=rollout-basic-n10-it15-acc
+#SBATCH --error=output/bubble/log/%x-%j.err
+#SBATCH --output=output/bubble/log/%x-%j.out
+
+. "/home/TUE/s131727/miniconda3/etc/profile.d/conda.sh"
+conda activate tggnn
+python3 \
+ -m models.bubble.predict.basic \
+ -c output/bubble/basic_n10_it15_acc.pt \
+ -n 100 \
+ -it 15 \
+ --target-acceleration \
+ ~/git/bubble-data/n10 \
+ output/bubble/rollout/n10-basic-it15-acc
+conda deactivate

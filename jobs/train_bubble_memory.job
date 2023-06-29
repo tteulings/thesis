@@ -1,0 +1,20 @@
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=zirconium
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=memory-n50-it1-vrem
+#SBATCH --error=output/bubble/log/%x-%j.err
+#SBATCH --output=output/bubble/log/%x-%j.out
+
+. "/home/TUE/s131727/miniconda3/etc/profile.d/conda.sh"
+conda activate tggnn
+python3 \
+ -m models.bubble.train.memory \
+ -c output/bubble/memory_n50_it1_vrem.pt \
+ -e 336000 \
+ -it 1 \
+ --remesh-velocity \
+ ~/git/bubble-data/n50
+conda deactivate

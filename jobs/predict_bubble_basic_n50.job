@@ -1,0 +1,21 @@
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=zirconium
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=rollout-basic-n50-it15-vrem-noise5e-7
+#SBATCH --error=output/bubble/log/%x-%j.err
+#SBATCH --output=output/bubble/log/%x-%j.out
+
+. "/home/TUE/s131727/miniconda3/etc/profile.d/conda.sh"
+conda activate tggnn
+python3 \
+ -m models.bubble.predict.basic \
+ -c output/bubble/basic_n50_it15_vel_rem.pt \
+ -n 500 \
+ -it 15 \
+ --remesh-velocity \
+ ~/git/bubble-data/n50 \
+ output/bubble/rollout/basic-n50-it15-vrem-presentation
+conda deactivate

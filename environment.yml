@@ -1,0 +1,21 @@
+# NOTE: Conda environment that contains all necessary packages to run the
+# framework and models (works on cluster).
+
+name: tggnn
+channels:
+  - pyg
+  - pytorch
+  - pytorch3d
+  - conda-forge
+dependencies:
+  - python=3.9
+  - cudatoolkit=10.2
+  - numpy
+  - numpy-stl
+  - pytorch=1.10.0
+  - pytorch3d
+  - pytorch-scatter
+  - tensorflow
+  - more-itertools
+  - jsonpickle
+  - wandb

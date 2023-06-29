@@ -1,0 +1,13 @@
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=zirconium
+#SBATCH --job-name=flag-augment
+#SBATCH --error=output/flag/log/%x-%j.err
+#SBATCH --output=output/flag/log/%x-%j.out
+
+. "/home/TUE/s131727/miniconda3/etc/profile.d/conda.sh"
+conda activate tggnn
+python3 -m models.flag.add_node_type
+conda deactivate

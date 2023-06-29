@@ -1,0 +1,20 @@
+#!/bin/bash
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=zirconium
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=dummy
+#SBATCH --error=output/test/log/%x-%j.err
+#SBATCH --output=output/test/log/%x-%j.out
+
+
+. "/home/TUE/20214195/miniconda3/etc/profile.d/conda.sh"
+conda activate tggnn
+python3 \
+ -m models.bubble.train.memory_tbptt \
+ -e 330 \
+ -p 1 \
+ -it 7 \
+ -k 3 \
+ ~/mirror/bubble-data
+conda deactivate

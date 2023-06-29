@@ -1,0 +1,22 @@
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=all
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=exp_memory_fix_pf_k300_gs
+#SBATCH --error=output/experimental/memory/%x-%j.err
+#SBATCH --output=output/experimental/memory/%x-%j.out
+
+. "/home/TUE/20214195/miniconda3/etc/profile.d/conda.sh"
+conda activate tggnn
+python3 \
+ -m experimental.remesh.memory_fix_pushforward_gs \
+ -c output/experimental/memory/exp_memory_fix_pf_k300_gs \
+ -e 320000 \
+ -it 7 \
+ -k 300 \
+ -lr 0.000005 \
+ --remesh-velocity \
+ ~/mirror/bubble-data/
+conda deactivate

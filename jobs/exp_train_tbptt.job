@@ -1,0 +1,22 @@
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=zirconium
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=rel_new-memory-n50-it7-k3-vrem-noise8e-1
+#SBATCH --error=output/experimental/memory/loss/%x-%j.err
+#SBATCH --output=output/experimental/memory/loss/%x-%j.out
+
+. "/home/TUE/s131727/miniconda3/etc/profile.d/conda.sh"
+conda activate tggnn
+python3 \
+ -m experimental.remesh.memory_tbptt \
+ -c output/experimental/memory/models/rel_new_n50_it7_k3_vrem_noise8e-1 \
+ -e 336000 \
+ -it 7 \
+ -k 3 \
+ --noise 8e-1 \
+ --remesh-velocity \
+ ~/git/bubble-data/n50
+conda deactivate

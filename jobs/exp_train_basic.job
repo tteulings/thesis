@@ -1,0 +1,21 @@
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=zirconium
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=basic-n50-it15-acc-noise1e-7-nosmooth
+#SBATCH --error=output/experimental/basic/loss/%x-%j.err
+#SBATCH --output=output/experimental/basic/loss/%x-%j.out
+
+. "/home/TUE/s131727/miniconda3/etc/profile.d/conda.sh"
+conda activate tggnn
+python3 \
+ -m experimental.remesh.basic \
+ -c output/experimental/basic/models/basic_n50_acc_noise1e-7_nosmooth.pt \
+ -e 504000 \
+ -it 15 \
+ --noise 1e-7 \
+ --target-acceleration \
+ ~/git/bubble-data/n50
+conda deactivate

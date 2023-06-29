@@ -1,0 +1,20 @@
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=chromium
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=basic-n50-it7-rem-vel-pts-loss
+#SBATCH --error=output/bubble/log/%x-%j.err
+#SBATCH --output=output/bubble/log/%x-%j.out
+
+. "/home/TUE/s131727/miniconda3/etc/profile.d/conda.sh"
+conda activate tggnn
+python3 \
+ -m models.bubble.train.basic_pushforward \
+ -c output/bubble/basic_n50_it7_rem_vel_pts_loss.pt \
+ -e 336000 \
+ -it 7 \
+ --remesh-velocity \
+ ~/git/bubble-data/n50 basic_n50.pt
+conda deactivate

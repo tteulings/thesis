@@ -1,0 +1,13 @@
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=calcium
+#SBATCH --job-name=add_instructions_n50
+#SBATCH --error=%x-%j.err
+#SBATCH --output=%x-%j.out
+
+. "/home/TUE/s131727/miniconda3/etc/profile.d/conda.sh"
+conda activate tggnn
+python3 -m experimental.remesh.add_instructions
+conda deactivate

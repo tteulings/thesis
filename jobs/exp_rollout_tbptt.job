@@ -1,0 +1,21 @@
+#!/bin/bash
+
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --partition=zirconium
+#SBATCH --gres=gpu:1
+#SBATCH --job-name=rollout-add-n50-it7-k3-vrem-pred-noise5e-6
+#SBATCH --error=output/experimental/memory/rollout/%x-%j.err
+#SBATCH --output=output/experimental/memory/rollout/%x-%j.out
+
+. "/home/TUE/s131727/miniconda3/etc/profile.d/conda.sh"
+conda activate tggnn
+python3 \
+ -m experimental.remesh.rollout_memory \
+ -c output/experimental/memory/models/add_n50_it7_k3_vrem_noise5e-6 \
+ -n 500 \
+ -it 7 \
+ --remesh-velocity \
+ ~/git/bubble-data/n50 \
+ output/experimental/rollout/add_n50_it7_k3_vrem_noise5e-6
+conda deactivate

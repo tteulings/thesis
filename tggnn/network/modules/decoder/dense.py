@@ -66,3 +66,27 @@ class DenseNodeDecoder(NodeDecoder):
             DenseDecoderImpl([input_size] + self._hiddens + [output_size]),
             layout,
         )
+
+
+class DenseCentroidDecoder(NodeDecoder):
+    _hiddens: List[int]
+    _label_key: str
+
+    def __init__(self, hiddens: List[int], label_key: str) -> None:
+        super().__init__()
+
+        self._hiddens = hiddens
+        self._label_key = label_key
+
+    def __call__(
+        self, node_key: str, attr_key: str, layout: TypedGraphLayout
+    ) -> Tuple[DecoderImpl, TypedGraphLayout]:
+        input_size = layout.node_sets[node_key].attrs[attr_key]
+        output_size = layout.labels[self._label_key].attrs
+
+        layout.node_sets[node_key].attrs[attr_key] = output_size
+
+        return (
+            DenseDecoderImpl([input_size] + self._hiddens + [output_size]),
+            layout,
+        )

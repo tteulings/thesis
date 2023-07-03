@@ -1,1 +1,1 @@
-from .dense import DenseEdgeDecoder, DenseNodeDecoder
+from .dense import DenseEdgeDecoder, DenseNodeDecoder, DenseCentroidDecoder

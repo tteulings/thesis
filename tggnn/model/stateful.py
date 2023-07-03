@@ -26,11 +26,12 @@ class StatefulModel(EncodeProcessDecode[TG_Data], Generic[TG_Data, TG_State]):
     ) -> Tuple[TG_Data, TG_State]:
         graph = global_state.merge_super_into(data)
 
-        graph = super().forward(graph)
+        graph, center_out = super().forward(graph)
+        # print(graph)
 
         global_state = global_state.extract_super_from(graph)
 
-        return (data, global_state)
+        return (graph, global_state, center_out)
 
     def gather_statistics(
         self, data: TG_Data, global_state: TG_State

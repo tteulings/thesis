@@ -21,7 +21,7 @@ from tggnn.network.epd import (
     NodeFunctionSet,
 )
 
-from tggnn.network.modules.decoder import DenseNodeDecoder
+from tggnn.network.modules.decoder import DenseNodeDecoder, DenseCentroidDecoder
 from tggnn.network.modules.encoder import (
     DenseNodeEncoder,
     DenseEdgeEncoder,
@@ -91,6 +91,8 @@ def bubble_memory_model(
                 "memory": NodeFunctionSet(
                     update=MemoryUpdate(),
                     encoder=NoOpNodeEncoder(),
+                    decoder=DenseCentroidDecoder(decode_hiddens, "target"),
+
                     normalizer=None,
                 )
             },

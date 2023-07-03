@@ -34,6 +34,7 @@ class BubbleSequence(TypedGraphDataset[Bubble]):
         transforms: Optional[List[TypedGraphTransform[Bubble]]] = None,
         remesh_velocity: bool = False,
         target_acceleration: bool = False,
+        center_prediction: bool = False
     ) -> None:
         super().__init__(root, transforms)
 
@@ -54,6 +55,7 @@ class BubbleSequence(TypedGraphDataset[Bubble]):
 
         self._remesh_velocity = remesh_velocity
         self._target_acceleration = target_acceleration
+        self._center_prediction = center_prediction
 
     def __len__(self) -> int:
         print(self._sequence_id)
@@ -62,12 +64,17 @@ class BubbleSequence(TypedGraphDataset[Bubble]):
         ).fetchone()[0]
 
     def __get__(self, idx: int) -> Bubble:
+
+ 
         faces, connect, prev, cur, next = (
             np.load(io.BytesIO(bytes))
+            
             for bytes in self._db.execute(
                 queries.select_bubble_by_id, [self._base_id + idx + 1]
             ).fetchone()
         )
+
+
         return Bubble(
             self._config,
             faces,
@@ -75,6 +82,7 @@ class BubbleSequence(TypedGraphDataset[Bubble]):
             [prev, cur, next],
             self._remesh_velocity,
             self._target_acceleration,
+            center_prediction=self._center_prediction
         )
 
 
@@ -85,6 +93,7 @@ class BubbleSequenceDataset(Dataset[BubbleSequence]):
         transforms: Optional[List[TypedGraphTransform[Bubble]]] = None,
         remesh_velocity: bool = False,
         target_acceleration: bool = False,
+        center_prediction: bool = False,
         ignore_sequences: List[int] = [],
         sequences: List[int] = [],
         start_point: int = 1
@@ -94,7 +103,6 @@ class BubbleSequenceDataset(Dataset[BubbleSequence]):
 
         self._root = root
         self._transforms = transforms
-
         with open(path.join(root, "layout.json"), "r") as file:
             self._layout = cast(
                 TypedGraphLayout, jsonpickle.decode(file.read())
@@ -104,7 +112,7 @@ class BubbleSequenceDataset(Dataset[BubbleSequence]):
 
         self._remesh_velocity = remesh_velocity
         self._target_acceleration = target_acceleration
-
+        self._center_prediction = center_prediction
     
         self._ignore_sequences = ignore_sequences
 
@@ -125,6 +133,7 @@ class BubbleSequenceDataset(Dataset[BubbleSequence]):
             self._transforms,
             self._remesh_velocity,
             self._target_acceleration,
+            self._center_prediction
         )
 
     def layout(self) -> TypedGraphLayout:

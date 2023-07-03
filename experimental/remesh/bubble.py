@@ -33,6 +33,39 @@ def bubble_volume(
     ) / 6.0
 
 
+def rotation_matrix_to_y_axis(vector):
+    # Normalize the input vector
+    vector = vector / np.linalg.norm(vector)
+    
+    # Compute the angle between the vector and the y-axis
+    angle = np.arccos(np.dot(vector, np.array([0, 1])))
+
+    if vector[0] < 0:
+        angle = -angle
+
+    # Create the rotation matrix
+    rotation_matrix = np.array([[np.cos(angle), -np.sin(angle)],
+                                [np.sin(angle), np.cos(angle)]])
+
+    return rotation_matrix
+
+
+def centroid(vertices, faces):
+
+    vertices = torch.tensor(vertices)
+    faces = torch.tensor(faces)
+
+    center = vertices[faces].sum(dim=0) / 4
+
+    volume = (
+        vertices[faces[0, :]]
+        * vertices[faces[1, :]].cross(
+            vertices[faces[2, :]], dim=1
+        )
+    ).sum(dim=1)
+
+    return (volume.unsqueeze(1).mul(center).sum(dim=0) / volume.sum(dim=0)).numpy()
+
 class Bubble(TypedGraph):
     def __init__(
         self,
@@ -43,14 +76,18 @@ class Bubble(TypedGraph):
         remesh_velocity: bool = False,
         target_acceleration: bool = False,
         old_velocity: bool = False,
+        center_prediction: bool = False
     ):
         super().__init__()
+
+
 
         self._config = config
         self.old_velocity = old_velocity
         self.remesh_velocity = remesh_velocity
         self.target_acceleration = target_acceleration
-
+        self.center_prediction = center_prediction
+        # print(center_prediction)
         remesh_result = remesh(
             config,
             bubble_volume(positions[0], source_faces).item(),
@@ -79,8 +116,10 @@ class Bubble(TypedGraph):
 
         if remesh_velocity:
             velocities = replay_result.values
+            
         else:
             velocities = remesh_result.positions - replay_result.values
+        # print('bubble_init', velocities)
 
         if target_acceleration:
             # a_2 = v_2 - v_1 = x_2 - 2x_1 + x_0
@@ -90,6 +129,28 @@ class Bubble(TypedGraph):
         else:
             # v_2 = x_2 - x_1
             target_tensor = positions[2] - remesh_result.positions
+
+            
+
+
+        if center_prediction:
+            self.center_velocity =  centroid(remesh_result.positions,  remesh_result.faces.transpose()) - centroid(positions[0], source_faces.T)
+            # print(self.center_velocity)
+            self.rotation_matrix = rotation_matrix_to_y_axis(self.center_velocity[:2])
+            self.center_position = centroid(remesh_result.positions,  remesh_result.faces.transpose())
+
+            self.center_position2 = centroid(positions[2],remesh_result.faces.transpose())
+            self.center_target = centroid(positions[2],remesh_result.faces.transpose())- centroid(remesh_result.positions,  remesh_result.faces.transpose())
+            # print(self.center_velocity)
+            target_tensor -= self.center_target
+            velocities  -= self.center_velocity
+
+            # print(velocities)
+
+            self.center_velocity = torch.tensor(self.center_velocity, dtype=torch.float, device=self.device)
+            self.center_target = torch.tensor(self.center_target, dtype=torch.float, device=self.device)
+
+    
 
         self.faces = torch.tensor(
             remesh_result.faces.transpose(),
@@ -235,20 +296,36 @@ class Bubble(TypedGraph):
 
         return self
 
-    def update(self, delta: Tensor, do_remesh: bool = True) -> "Bubble":
+    def update(self, delta: Tensor, do_remesh: bool = True, center_delta: Tensor = None) -> "Bubble":
         old_pos = self.positions.to(self.device)
 
         # self.velocity = self.node_sets["bubble"]["velocity"].attr[:, :3].double()
 
         if self.old_velocity:
             self.velocity *= self._config.dt
+
+        # print('update', self.velocity)
+
         # print(self.velocity)
         # print(delta)
-        # print()
+        # print(center_delta)
+
         self.velocity = (
             (self.velocity.to(delta.device) + delta) if self.target_acceleration else delta.double()
         )
-        new_pos = old_pos + self.velocity
+
+        # print('update_new', self.velocity)
+
+        if self.center_prediction:
+            # print('pred')
+            self.center_velocity = center_delta.to(delta.device)
+
+
+            new_pos = old_pos + self.velocity + center_delta.to(delta.device)
+
+        else:
+            
+            new_pos = old_pos + self.velocity
 
         if do_remesh:
             history = self.velocity if self.remesh_velocity else old_pos
@@ -318,6 +395,11 @@ class Bubble(TypedGraph):
         self.node_sets["bubble"]["velocity"].attr = torch.cat(
             (self.velocity, torch.norm(self.velocity, dim=1).unsqueeze(1)), 1
         )
+
+
+        # center_velocity = centroid(remesh_result.positions,  remesh_result.faces.transpose()) - centroid(positions[0], source_faces)
+        # self.rotation_matrix = rotation_matrix_to_y_axis(center_velocity)
+
 
         float_positions = self.positions.float()
 

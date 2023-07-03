@@ -147,6 +147,8 @@ class EncodeProcessDecode(GraphModule[TG_Data], Generic[TG_Data]):
         for name, encoder in self._edge_encoders.items():
             data.edge_sets[name].attr = encoder(data.edge_sets[name].attr)
 
+        # print('centroid_decoder', data.node_sets['centroid']['memory'].attr)
+
         # Process
         for block in self._blocks:
             data = block.forward(data)
@@ -165,8 +167,14 @@ class EncodeProcessDecode(GraphModule[TG_Data], Generic[TG_Data]):
 
         for name, attrs in self._node_decoders.items():
             for attr, decoder in attrs.items():
-                data.node_sets[name][attr].attr = decoder.forward(
-                    data.node_sets[name][attr].attr
-                )
+                if name == 'centroid':
+                    # print('centroid_decoder', data.node_sets[name][attr].attr)
+                    center_output = decoder.forward(
+                        data.node_sets[name][attr].attr
+                    )
+                else:
+                    data.node_sets[name][attr].attr = decoder.forward(
+                        data.node_sets[name][attr].attr
+                    )
 
-        return data
+        return data,center_output

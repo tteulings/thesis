@@ -75,7 +75,7 @@ scheduler = ExponentialLR(optimizer, gamma=(1e-2) ** (1 / 5e6))
 
 # Split the dataset, into norm, hidden, and training segments.
 sequence_loader = DataLoader(
-    dataset, batch_size=None, shuffle=False, num_workers=0, pin_memory=True
+    dataset, batch_size=None, shuffle=False, num_workers=0, pin_memory=False
 )
 
 gather_statistics = False
@@ -119,7 +119,7 @@ def train(
             # print()
             # print(sequence)
             bubble_loader = DataLoader(
-                sequence, batch_size=None, shuffle=False, num_workers=8, pin_memory=True
+                sequence, batch_size=None, shuffle=False, num_workers=0, pin_memory=True
             )
 
             if gather_statistics:

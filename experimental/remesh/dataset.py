@@ -22,6 +22,8 @@ class BubbleDataset(TypedGraphDataset[Bubble]):
         transforms: Optional[List[TypedGraphTransform[Bubble]]] = None,
         remesh_velocity: bool = False,
         target_acceleration: bool = False,
+        center_prediction: bool = False,
+
     ) -> None:
         super().__init__(root, transforms)
 
@@ -34,6 +36,8 @@ class BubbleDataset(TypedGraphDataset[Bubble]):
 
         self._remesh_velocity = remesh_velocity
         self._target_acceleration = target_acceleration
+        self._center_prediction = center_prediction
+
 
     def __len__(self) -> int:
         return self._db.execute("SELECT SUM(length) FROM sequence").fetchone()[
@@ -55,4 +59,5 @@ class BubbleDataset(TypedGraphDataset[Bubble]):
             [prev, cur, next],
             self._remesh_velocity,
             self._target_acceleration,
+            center_prediction=self._center_prediction
         )

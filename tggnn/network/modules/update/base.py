@@ -13,6 +13,8 @@ class UpdateModuleImpl(Module, metaclass=abc.ABCMeta):
         node_attr: Tensor,
         messages: Iterable[Tensor],
     ) -> Tensor:
+        
+
         return self.forward(node_attr, messages)
 
     @abc.abstractmethod

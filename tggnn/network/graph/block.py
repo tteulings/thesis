@@ -19,6 +19,7 @@ class GraphBlockImpl(GraphModule[TG_Data], Generic[TG_Data]):
 
     def forward(self, data: TG_Data) -> TG_Data:
         for graph_pass in self._passes:
+            # print(graph_pass)
             data = graph_pass.forward(data)
 
         return data

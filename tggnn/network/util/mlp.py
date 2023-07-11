@@ -15,6 +15,8 @@ def make_mlp(
         ReLU() for _ in range(len(sizes) - (1 if activate_final else 2))
     )
 
+    normalize=False
+
     return Sequential(
         *chain(
             weave(layers, activations),

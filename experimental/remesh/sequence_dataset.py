@@ -57,11 +57,22 @@ class BubbleSequence(TypedGraphDataset[Bubble]):
         self._target_acceleration = target_acceleration
         self._center_prediction = center_prediction
 
+        self._rotation_matrix = np.diag([1.0,1.0,1.0])
+
+
+
+    def set_rotation_matrix(self, rotation_matrix):
+        self._rotation_matrix = rotation_matrix
+
     def __len__(self) -> int:
         print(self._sequence_id)
         return self._db.execute(
             "SELECT length FROM sequence WHERE id = ?", [self._sequence_id]
         ).fetchone()[0]
+
+
+
+
 
     def __get__(self, idx: int) -> Bubble:
 
@@ -82,7 +93,8 @@ class BubbleSequence(TypedGraphDataset[Bubble]):
             [prev, cur, next],
             self._remesh_velocity,
             self._target_acceleration,
-            center_prediction=self._center_prediction
+            center_prediction=self._center_prediction,
+            rotation_matrix=self._rotation_matrix
         )
 
 
@@ -117,6 +129,7 @@ class BubbleSequenceDataset(Dataset[BubbleSequence]):
         self._ignore_sequences = ignore_sequences
 
         if len(ignore_sequences) > 0:
+            print(start_point)
             self._sequences = [int(i) for i in np.arange(start_point, self._db.execute("SELECT MAX(id) FROM sequence").fetchone()[0]+1) if i not in ignore_sequences] 
         elif len(sequences) > 0:
             self._sequences = sequences

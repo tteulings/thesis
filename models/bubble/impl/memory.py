@@ -26,6 +26,7 @@ from tggnn.network.modules.encoder import (
     DenseNodeEncoder,
     DenseEdgeEncoder,
     NoOpNodeEncoder,
+    DenseCentroidEncoder
 )
 from tggnn.network.modules.normalizer import (
     WelfordEdgeNormalizer,
@@ -33,7 +34,7 @@ from tggnn.network.modules.normalizer import (
     WelfordNodeNormalizer,
 )
 from tggnn.network.modules.transfer import DenseTransfer
-from tggnn.network.modules.update import DenseUpdate, MemoryUpdate
+from tggnn.network.modules.update import DenseUpdate, MemoryUpdate, DenseCentroidUpdate
 
 from tggnn.model import StatefulModel
 
@@ -46,7 +47,9 @@ def bubble_memory_model(
     num_layers: int,
     iterations: int,
 ) -> Tuple[StatefulModel[Bubble, TypedGraph], TypedGraph]:
+    
 
+    print(iterations)
     # NOTE: The feature tensors of "save" and "load" are initialized to size
     # (0, 4), to provide the system with the information that both types
     # initially have 4 attributes (after calling "center_memory").
@@ -54,7 +57,8 @@ def bubble_memory_model(
         data_layout=data_layout,
         node_sets={
             "centroid": NodeSet(
-                {"memory": NodeAttribute(torch.zeros((1, latent_size)))}
+                {"memory": NodeAttribute(torch.zeros((1, latent_size))), "velocity": NodeAttribute(torch.zeros((1,3)))},
+                
             )
         },
         edge_sets={
@@ -91,10 +95,18 @@ def bubble_memory_model(
                 "memory": NodeFunctionSet(
                     update=MemoryUpdate(),
                     encoder=NoOpNodeEncoder(),
+                    normalizer=None,
+                ),
+
+                'velocity': NodeFunctionSet(
+                    encoder=DenseCentroidEncoder(hiddens),
+
+                    update=DenseCentroidUpdate(hiddens),
+
                     decoder=DenseCentroidDecoder(decode_hiddens, "target"),
 
-                    normalizer=None,
                 )
+
             },
         },
         edges={

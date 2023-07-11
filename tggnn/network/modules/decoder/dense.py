@@ -81,7 +81,7 @@ class DenseCentroidDecoder(NodeDecoder):
     def __call__(
         self, node_key: str, attr_key: str, layout: TypedGraphLayout
     ) -> Tuple[DecoderImpl, TypedGraphLayout]:
-        input_size = layout.node_sets[node_key].attrs[attr_key]
+        input_size = layout.node_sets[node_key].attrs[attr_key] + layout.node_sets['centroid'].attrs['memory']
         output_size = layout.labels[self._label_key].attrs
 
         layout.node_sets[node_key].attrs[attr_key] = output_size

@@ -23,6 +23,7 @@ class BubbleDataset(TypedGraphDataset[Bubble]):
         remesh_velocity: bool = False,
         target_acceleration: bool = False,
         center_prediction: bool = False,
+        rotation_matrix: np.array = []
 
     ) -> None:
         super().__init__(root, transforms)
@@ -38,7 +39,11 @@ class BubbleDataset(TypedGraphDataset[Bubble]):
         self._target_acceleration = target_acceleration
         self._center_prediction = center_prediction
 
+        self._rotation_matrix = np.diag([1.0,1.0,1.0])
 
+
+    def set_rotation_matrix(self, rotation_matrix):
+        self._rotation_matrix = rotation_matrix
     def __len__(self) -> int:
         return self._db.execute("SELECT SUM(length) FROM sequence").fetchone()[
             0
@@ -59,5 +64,6 @@ class BubbleDataset(TypedGraphDataset[Bubble]):
             [prev, cur, next],
             self._remesh_velocity,
             self._target_acceleration,
-            center_prediction=self._center_prediction
+            center_prediction=self._center_prediction,
+            rotation_matrix=self._rotation_matrix
         )

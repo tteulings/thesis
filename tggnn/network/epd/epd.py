@@ -137,8 +137,10 @@ class EncodeProcessDecode(GraphModule[TG_Data], Generic[TG_Data]):
         for name, normalizer in self._label_normalizers.items():
             data.labels[name] = normalizer(data.labels[name])
 
+        old_velocity = data.node_sets['centroid']['velocity'].attr
         # Encode
         for name, attrs in self._node_encoders.items():
+            
             for attr, encoder in attrs.items():
                 data.node_sets[name][attr].attr = encoder(
                     data.node_sets[name][attr].attr
@@ -169,12 +171,12 @@ class EncodeProcessDecode(GraphModule[TG_Data], Generic[TG_Data]):
             for attr, decoder in attrs.items():
                 if name == 'centroid':
                     # print('centroid_decoder', data.node_sets[name][attr].attr)
+                    # print(data.node_sets[name]['memory'].attr)
                     center_output = decoder.forward(
-                        data.node_sets[name][attr].attr
-                    )
+                        torch.cat((data.node_sets[name][attr].attr, data.node_sets[name]['memory'].attr), 1)
+                    ) + old_velocity
                 else:
                     data.node_sets[name][attr].attr = decoder.forward(
                         data.node_sets[name][attr].attr
                     )
-
         return data,center_output

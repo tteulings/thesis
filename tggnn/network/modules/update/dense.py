@@ -19,7 +19,7 @@ class DenseUpdateImpl(UpdateModuleImpl):
         normalize: bool,
     ) -> None:
         super().__init__()
-
+        print('update')
         self.mlp = make_mlp(layout, activate_final, normalize)
 
     def forward(
@@ -59,6 +59,43 @@ class DenseUpdate(UpdateModule):
                 for edge_key in node_set.edge_sets
             )
         )
+
+        node_set.attrs[attr_key] = self._layout[-1]
+
+        return (
+            DenseUpdateImpl(
+                [input_size] + self._layout,
+                self._activate_final,
+                self._normalize,
+            ),
+            layout,
+        )
+
+
+class DenseCentroidUpdate(UpdateModule):
+    _layout: List[int]
+    _activate_final: bool
+    _normalize: bool
+
+    def __init__(
+        self,
+        layout: List[int],
+        activate_final: bool = False,
+        normalize: bool = True,
+    ) -> None:
+        super().__init__()
+
+        self._layout = layout
+        self._activate_final = activate_final
+        self._normalize = normalize
+
+    def __call__(
+        self, node_key: str, attr_key: str, layout: TypedGraphLayout
+    ) -> Tuple[UpdateModuleImpl, TypedGraphLayout]:
+        node_set = layout.node_sets[node_key]
+        node_attrs = node_set.attrs[attr_key]
+
+        input_size = node_attrs + layout.node_sets['centroid'].attrs['memory']
 
         node_set.attrs[attr_key] = self._layout[-1]
 

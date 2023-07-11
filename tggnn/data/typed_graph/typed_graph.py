@@ -275,6 +275,7 @@ class TypedGraphLayout:
     labels: Dict[str, LabelSummary]
 
     def __init__(self, graph: TypedGraph) -> None:
+
         self.node_sets = {
             key: node_set.summarize()
             for key, node_set in graph.node_sets.items()

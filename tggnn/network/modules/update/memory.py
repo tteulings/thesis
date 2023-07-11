@@ -20,8 +20,12 @@ class MemoryUpdateImpl(UpdateModuleImpl):
         self,
         node_attr: Tensor,
         messages: Iterable[Tensor],
+        center_velocity: Tensor,
     ) -> Tensor:
-        return self._gru.forward(torch.cat([*messages], 1), node_attr)
+        print(center_velocity.shape)
+        
+
+        return self._gru.forward(torch.cat([*messages, center_velocity], 1), node_attr)
 
 
 class MemoryUpdate(UpdateModule):
@@ -29,10 +33,10 @@ class MemoryUpdate(UpdateModule):
         self, node_key: str, attr_key: str, layout: TypedGraphLayout
     ) -> Tuple[UpdateModuleImpl, TypedGraphLayout]:
         node_set = layout.node_sets[node_key]
-
+ 
         return (
             MemoryUpdateImpl(
-                sum(
+                2*sum(
                     (
                         layout.edge_sets[edge_key].attrs
                         for edge_key in node_set.edge_sets

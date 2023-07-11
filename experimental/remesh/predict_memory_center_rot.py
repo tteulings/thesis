@@ -1,5 +1,6 @@
 import os
 import sys
+import numpy as np
 from copy import deepcopy
 import gc
 import torch
@@ -11,10 +12,12 @@ from models.bubble.args import bubble_model_args
 from models.bubble.impl.memory import bubble_memory_model, center_memory
 from models.common import Checkpoint
 
+
+from .bubble import Bubble, rotation_matrix_to_y_axis, rotation_matrix_to_diag
+
 from .dataset import BubbleDataset
 import wandb
 
-import loky
 from loky import get_reusable_executor
 
 
@@ -88,13 +91,24 @@ else:
 
 center_normalizer =  torch.tensor([.7*10**7, .35*10**7, .5*10**5], device='cuda:0')
 
+
+
+dataset.set_rotation_matrix(np.diag([1.0,1.0,1.0]))
+# rotation_matrix = rotation_matrix_to_diag(sequence[0].center_velocity)
+rotation_matrix = rotation_matrix_to_y_axis(dataset[args.bubble_id - 100].center_velocity)
+
+dataset.set_rotation_matrix(rotation_matrix)
+
+
 with torch.no_grad():
-    for id in range(args.bubble_id - 0, args.bubble_id):
+    for id in range(args.bubble_id - 100, args.bubble_id):
         print(f"Preparing hidden: {id}")
         bubble = dataset[id]
         bubble.to(device)
 
         _, state, _ = model.forward(bubble, center_memory(bubble, state))
+
+
 
     bubble = dataset[args.bubble_id]
     bubble.to(device)

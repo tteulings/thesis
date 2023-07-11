@@ -54,3 +54,21 @@ class DenseNodeEncoder(NodeEncoder):
         layout.node_sets[node_key].attrs[attr_key] = self._hiddens[-1]
 
         return (DenseEncoderImpl([input_size] + self._hiddens), layout)
+
+
+class DenseCentroidEncoder(NodeEncoder):
+    _hiddens: List[int]
+
+    def __init__(self, hiddens: List[int]) -> None:
+        super().__init__()
+
+        self._hiddens = hiddens
+
+    def __call__(
+        self, node_key: str, attr_key: str, layout: TypedGraphLayout
+    ) -> Tuple[EncoderImpl, TypedGraphLayout]:
+        input_size = layout.node_sets[node_key].attrs[attr_key]
+
+        layout.node_sets[node_key].attrs[attr_key] = self._hiddens[-1]
+
+        return (DenseEncoderImpl([input_size] + self._hiddens), layout)

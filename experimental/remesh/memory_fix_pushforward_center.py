@@ -5,6 +5,8 @@ from timeit import default_timer
 
 import numpy as np
 
+import torch
+
 import os;
 
 import torch
@@ -20,11 +22,13 @@ from models.common import Checkpoint
 from models.bubble.args import bubble_model_args
 from models.bubble.impl.memory import bubble_memory_model, center_memory
 
-from .bubble import Bubble
+from .bubble import Bubble, rotation_matrix_to_y_axis
 from .sequence_dataset import BubbleSequenceDataset
-from .transforms import AdditiveNoiseTransform, RelativeNoiseTransform
+# from .transforms import AdditiveNoiseTransform, RelativeNoiseTransform
 
 import wandb
+
+# from torchsummary import summary
 # Prepare the argument parser
 args = bubble_model_args(True)
 print(args)
@@ -53,7 +57,9 @@ dataset = BubbleSequenceDataset(
     # ignore_sequences=[1, 2,3,4,5,6,7,8]
     start_point=2
 )
-transform = AdditiveNoiseTransform(args.noise) if args.noise is not None else None
+# transform = AdditiveNoiseTransform(args.noise) if args.noise is not None else None
+
+transform =None
 # A small epsilon value to stabilize ARE computation.
 eps = 1e-8
 
@@ -62,10 +68,14 @@ eps = 1e-8
 
 # Setup the network
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+device= 'cpu'
 model, state = bubble_memory_model(
     dataset.layout(), args.latent_size, args.num_layers, args.iterations
 )
+
+# print(summary(model))
+
+# print(dataset.layout())
 
 model.to(device)
 state.to(device)
@@ -102,7 +112,11 @@ torch.cuda.empty_cache()
 # Gather normalizer statistics
 model.train()
 
-center_normalizer =  torch.tensor([.7*10**7, .35*10**7, .5*10**5])
+center_normalizer =  torch.tensor([2*10**8, .1*10**7, .25*10**5])
+
+# center_normalizer =  torch.tensor([.7*10**7, .35*10**7, .5*10**5])
+
+# center_normalizer =  torch.tensor([1, 1, 1])
 
 wandb.watch(model, log_freq=10, log='all')
 
@@ -122,8 +136,10 @@ def train(
         for si, sequence in enumerate(sequence_loader):
             # print()
             # print(sequence)
+
+
             bubble_loader = DataLoader(
-                sequence, batch_size=None, shuffle=False, num_workers=8, pin_memory=True
+                sequence, batch_size=None, shuffle=False, num_workers=2, pin_memory=True
             )
 
             if gather_statistics:
@@ -142,27 +158,46 @@ def train(
             centroid = state.node_sets["centroid"]
             # centroid["memory"].attr.zero_()
             centroid["memory"].attr = torch.ones_like(centroid["memory"].attr)
+
             timer = default_timer()
 
             loss = torch.tensor([0.0], device=device)
 
             current = None
+            ui = 0
 
             
+            
+            velocities = []
 
+            velocities_ground_truth = []
+
+            sequence.set_rotation_matrix(np.diag([1.0,1.0,1.0]))
+            rotation_matrix = rotation_matrix_to_y_axis(sequence[0].center_velocity)
+
+            rotation_matrix_groundtruth = rotation_matrix_to_y_axis(sequence[0].center_velocity)
+            centroid['velocity'].attr = sequence[0].center_velocity
+            sequence.set_rotation_matrix(rotation_matrix)
+
+            mats = []
             # print(psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2)
-            for (count, bubble) in enumerate(bubble_loader):
+            for (count, bubble) in enumerate(sequence):
+                print('\nstart')
+
                 # print(count)
 
                 if count == 0:
                     u = max(1, np.random.choice(list(range(int(args.tbptt*0.1), args.tbptt))   ))
                     ui = 0
 
+
                     if transform is not None:
                         current = transform(bubble)
                     else:
-                        current = bubble
-                elif ui >  1 and (ui - 1) % u == 0:
+                        current = deepcopy(bubble)
+
+                    # velocities_ground_truth.append(bubble.center_velocity)
+                elif ui >  0 and (ui) ==  u:
                     print(count,'new_bubble')
                     u = max(1, np.random.choice(list(range(int(args.tbptt*0.1), args.tbptt))   ))
                     ui = 0
@@ -170,7 +205,8 @@ def train(
                     if transform is not None:
                         current = transform(bubble)
                     else:
-                        current = bubble
+                        current = deepcopy(bubble)
+                    print(current.center_velocity)
                 else:
                     if current is None:
                         # Just to satisfy the type system.
@@ -181,87 +217,50 @@ def train(
                     current.labels["target"] = bubble.labels["target"]
 
                     current.center_target = bubble.center_target
+                    
+                print(ui, u, count)
 
-                # print(psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2)
+
+                velocities.append((current.center_velocity).cpu().numpy())
+
                 current.to(device)
 
+   
+                print('value', centroid['velocity'].attr, current.center_velocity.to(device) )
                 state = center_memory(current, state)
 
+                # centroid['velocity'].attr = bubble.center_target.to(device).reshape((1,3))*center_normalizer.to(device)
                 out, state, center_out = model.forward(current, state)
 
+                wandb.log({'centroid': centroid["memory"].attr.cpu().detach().numpy()[0]})
 
-
-                # print(psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2)
                 pred = out.node_sets["bubble"]["velocity"].attr
                 label = out.labels["target"]
 
-
-                error = ((label-pred)**2).mean(axis=0)
-                # print(error)
-                current_centroid = current.centroid()
+                error = ((bubble.center_target.to(center_out.device)*center_normalizer.to(center_out.device)-center_out.reshape(3))**2)
+                
                 # current.update(
                 #     model._label_normalizers["target"].inverse(label), False
                 # )
 
                 one_step_loss = F.mse_loss(pred, label)
+                one_step_center_loss = F.mse_loss(bubble.center_target.to(center_out.device)*center_normalizer.to(center_out.device), center_out.reshape(3))
 
-                # print(pred, label)
+                # loss += one_step_center_loss  + one_step_loss
+                loss += one_step_center_loss
 
-                one_step_center_loss = F.mse_loss(bubble.center_target.to(center_out.device)*center_normalizer.to(center_out.device), center_out)
+                train_loss += float(one_step_center_loss.item())
 
-                loss += one_step_center_loss  + one_step_loss
-
-                # loss += one_step_loss + one_step_center_loss
-
-                train_loss += float(one_step_loss.item())
-                print(bubble.center_target*center_normalizer.to(bubble.center_target.device))
-                print(center_out)
-
-                rel_error += (
-                    torch.mean(
-                        torch.abs(pred - label)
-                        / torch.abs(label).clamp_min(eps),
-                        0,
-                    )
-                    .detach()
-                    .cpu()
-                    .numpy()
-                )
                 model.epoch += 1
-                # print(torch.mean(pred, dim=0))
-
-                print('target')
-                current.update(
-                    model._label_normalizers["target"].inverse(pred.detach()), False, center_out / center_normalizer.to(center_out.device)
-                )
-
-                # current.update(
-                #     model._label_normalizers["target"].inverse(pred.detach()), False, current.center_target
-                # )
-                vel_pred = current.centroid() - current_centroid
-                vel_center_pred = (center_out / center_normalizer.to(center_out.device))[0]
-
-                print('label')
-                bubble_centroid = bubble.centroid()
-                # # print(label)
-                # # current_update = deepcopy(current)
-                # print(label)
-                bubble.update(
-                    model._label_normalizers["target"].inverse(label).to(bubble.device), False, current.center_target
-                )
+                # print(bubble.center_target.to(center_out.device)*center_normalizer.to(center_out.device))
+            
 
 
-                # preds = model._label_normalizers["target"].inverse(pred)
-                vel_true = bubble.centroid() - bubble_centroid
-
-                # wandb.log({'velocity_centroid_x': vel_pred[ 0], 'velocity_centroid_y': vel_pred[1], 'velocity_centroid_z': vel_pred[ 2], 'true_velocity_centroid_x': vel_true[ 0], 'true_velocity_centroid_y': vel_true[1], 'true_velocity_centroid_z': vel_true[ 2]})
-                # wandb.log({'epoch': model.epoch, 'bubble_num': si+1, "loss": loss})
-                wandb.log({'u': u, 'loss_x': error[0], 'loss_y': error[1], 'loss_z': error[2], 'epoch': model.epoch, 'bubble_num': si+1, "loss": loss, 'onesteploss': one_step_loss , 'onestepcenterloss': one_step_center_loss,'velocity_centroid_x2': vel_center_pred[ 0], 'velocity_centroid_y2': vel_center_pred[1], 'velocity_centroid_z2': vel_center_pred[ 2],  'velocity_centroid_x': vel_pred[ 0], 'velocity_centroid_y': vel_pred[1], 'velocity_centroid_z': vel_pred[ 2], 'true_velocity_centroid_x': vel_true[ 0], 'true_velocity_centroid_y': vel_true[1], 'true_velocity_centroid_z': vel_true[ 2]})
+                wandb.log({'u': u, 'loss_x': error[0], 'loss_y': error[1], 'loss_z': error[2], 'epoch': model.epoch, 'bubble_num': si+1, "loss": loss, 'onesteploss': one_step_loss , 'onestepcenterloss': one_step_center_loss})
 
                 # print(count,args.tbptt, count%args.tbptt)
                 # TBPTT with k1 == k2
-                print(ui, u, count)
-                if ui == u:
+                if ui == u-1:
                     
                     optimizer.zero_grad()
                     loss.backward()
@@ -272,22 +271,92 @@ def train(
 
 
 
-                if (u - (ui % u)) >= 3 or  ui == u:
+                if (u - ui) >= 5  or  ui == u-1:
                     print('detach')
                     # TODO: I would rather use the inplace `detach_()`. However, I
                     # have a feeling that it doesn't have the same effect on the
                     # autograd graph. Find out if there are any differences.
                     centroid["memory"].attr = centroid["memory"].attr.detach()
                     loss.detach_().zero_()
+                    error.detach_().zero_()
+
                     one_step_loss.detach_().zero_()
                     one_step_center_loss.detach_().zero_()
-
+                    centroid['velocity'].attr.detach_()
                 else:
                     print(count, 'not detach')
 
+
+
+                if count > -1:
+
+                    velocities_ground_truth.append(bubble.center_target.cpu().numpy())
+                    print(velocities_ground_truth)
+
+                    
+
+                    # print(np.sum(velocities[max(0, count-10):count], axis=0))
+                    # print(len(velocities), velocities[max(0, len(velocities)-10):count])
+                    # rotation_matrix = rotation_matrix_to_y_axis(( np.sum(velocities[max(0, len(velocities)-10):count+1], axis=0)) )
+                    # rotation_matrix_groundtruth = rotation_matrix_to_y_axis(( np.sum(velocities_ground_truth[max(0, len(velocities_ground_truth)-10):count+1], axis=0)) )
+                    rotation_matrix = rotation_matrix_to_y_axis(np.sum(velocities[-1:], axis=0))
+                    velocities = list(velocities@rotation_matrix.T)
+                    rotation_matrix_groundtruth = rotation_matrix_to_y_axis(np.sum(velocities_ground_truth[-1:], axis=0))@rotation_matrix_groundtruth
+                    sequence.set_rotation_matrix(rotation_matrix_groundtruth)
+
+                    # print(bubble.rotation_matrix)
+                    # if len(velocities) >= 10:
+                    #     velocities.pop(0)
+                    #     velocities_ground_truth.pop(0)
+                    # velocities = [max(0, count-10)]
+                    # print(velocities)
+                    # rotation_matrix = rotation_matrix_to_y_axis(().cpu().numpy() )
+                    # sequence.set_rotation_matrix(rotation_matrix)
+
+
+
+                vel_pred = bubble.center_target.reshape((3))
+
+
+                print('center_target', vel_pred)
+                # vel_true
+                current_centroid = current.centroid(True)
+
+                current.update(
+                    model._label_normalizers["target"].inverse(pred.detach()), False, center_out / center_normalizer.to(center_out.device),rotation_matrix
+                )
+                centroid['velocity'].attr = center_out / center_normalizer.to(center_out.device)
+
+                # current.update(
+                #     model._label_normalizers["target"].inverse(pred.detach()), False, current.center_target
+                # )
+                # vel_pred = current.centroid() - current_centroid
+                # vel_pred = bubble.center_target.reshape((3))
+                
+                vel_center_pred = (center_out / center_normalizer.to(center_out.device))[0]
+                # vel_pred = current.center_target
+
+                bubble_centroid = bubble.centroid()
+      
+
+                bubble.update(
+                    model._label_normalizers["target"].inverse(label).to(bubble.device), False, bubble.center_target
+                )
+
+
+
+    
+                vel_true = bubble.centroid() - bubble_centroid
+
+                wandb.log({'u': u, 'loss_x': error[0], 'loss_y': error[1], 'loss_z': error[2], 'epoch': model.epoch, 'bubble_num': si+1,'velocity_centroid_x2': vel_center_pred[ 0], 'velocity_centroid_y2': vel_center_pred[1], 'velocity_centroid_z2': vel_center_pred[ 2],  'velocity_centroid_x': vel_pred[ 0], 'velocity_centroid_y': vel_pred[1], 'velocity_centroid_z': vel_pred[ 2], 'true_velocity_centroid_x': vel_true[ 0], 'true_velocity_centroid_y': vel_true[1], 'true_velocity_centroid_z': vel_true[ 2]})
                 ui+=1
                 if count > 500:
                     break
+
+
+
+
+
 
                 if (count + 1) % 500 == 0:
               

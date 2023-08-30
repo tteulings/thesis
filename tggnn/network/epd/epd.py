@@ -118,6 +118,7 @@ class EncodeProcessDecode(GraphModule[TG_Data], Generic[TG_Data]):
         # Normalize
         for name, attrs in self._node_normalizers.items():
             for attr, normalizer in attrs.items():
+                print(name, attr)
                 data.node_sets[name][attr].attr = normalizer(
                     data.node_sets[name][attr].attr
                 )
@@ -142,9 +143,11 @@ class EncodeProcessDecode(GraphModule[TG_Data], Generic[TG_Data]):
         for name, attrs in self._node_encoders.items():
             
             for attr, encoder in attrs.items():
+                # print(name, attr)
                 data.node_sets[name][attr].attr = encoder(
                     data.node_sets[name][attr].attr
                 )
+        old_velocity2 = data.node_sets['centroid']['velocity'].attr
 
         for name, encoder in self._edge_encoders.items():
             data.edge_sets[name].attr = encoder(data.edge_sets[name].attr)
@@ -154,7 +157,7 @@ class EncodeProcessDecode(GraphModule[TG_Data], Generic[TG_Data]):
         # Process
         for block in self._blocks:
             data = block.forward(data)
-
+        # print("OLD", old_velocity)
         # Decode
         for name, decoder in self._edge_decoders.items():
             edge_attr = data.edge_sets[name].attr
@@ -172,9 +175,21 @@ class EncodeProcessDecode(GraphModule[TG_Data], Generic[TG_Data]):
                 if name == 'centroid':
                     # print('centroid_decoder', data.node_sets[name][attr].attr)
                     # print(data.node_sets[name]['memory'].attr)
+
+                    # print('TESTER', old_velocity2, data.node_sets[name][attr].attr)
+                 # # Angle 45
                     center_output = decoder.forward(
-                        torch.cat((data.node_sets[name][attr].attr, data.node_sets[name]['memory'].attr), 1)
-                    ) + old_velocity
+                        torch.cat(( data.node_sets[name]['memory'].attr, old_velocity), 1) 
+                    )
+
+                    # # Angle
+                    # center_output = decoder.forward(
+                    #     torch.cat((data.node_sets[name][attr].attr,  data.node_sets[name]['memory'].attr), 1) 
+                    # )
+                    # center_output = decoder.forward(
+                    #     torch.cat(( data.node_sets[name]['memory'].attr, old_velocity), 1) 
+                    # )
+                    print('output', center_output)
                 else:
                     data.node_sets[name][attr].attr = decoder.forward(
                         data.node_sets[name][attr].attr

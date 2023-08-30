@@ -43,6 +43,7 @@ class BubbleDataset(TypedGraphDataset[Bubble]):
 
 
     def set_rotation_matrix(self, rotation_matrix):
+        # print('set_matrix',rotation_matrix)
         self._rotation_matrix = rotation_matrix
     def __len__(self) -> int:
         return self._db.execute("SELECT SUM(length) FROM sequence").fetchone()[
@@ -56,6 +57,7 @@ class BubbleDataset(TypedGraphDataset[Bubble]):
                 queries.select_bubble_by_id, [idx + 1]
             ).fetchone()
         )
+        # print('get')
 
         return Bubble(
             self._config,
@@ -67,3 +69,4 @@ class BubbleDataset(TypedGraphDataset[Bubble]):
             center_prediction=self._center_prediction,
             rotation_matrix=self._rotation_matrix
         )
+ 

@@ -20,6 +20,8 @@ class DenseDecoderImpl(DecoderImpl):
         return self.mlp(attr)
 
 
+
+
 class DenseEdgeDecoder(EdgeDecoder):
     _hiddens: List[int]
     _label_key: str
@@ -68,6 +70,8 @@ class DenseNodeDecoder(NodeDecoder):
         )
 
 
+import torch
+
 class DenseCentroidDecoder(NodeDecoder):
     _hiddens: List[int]
     _label_key: str
@@ -81,7 +85,15 @@ class DenseCentroidDecoder(NodeDecoder):
     def __call__(
         self, node_key: str, attr_key: str, layout: TypedGraphLayout
     ) -> Tuple[DecoderImpl, TypedGraphLayout]:
-        input_size = layout.node_sets[node_key].attrs[attr_key] + layout.node_sets['centroid'].attrs['memory']
+        # input_size = layout.node_sets[node_key].attrs[attr_key] + layout.node_sets['centroid'].attrs['memory'] + 3
+
+        
+        # Angle 45
+        input_size = layout.node_sets['centroid'].attrs['memory']
+
+        # angle
+        # input_size = layout.node_sets[node_key].attrs[attr_key] + layout.node_sets['centroid'].attrs['memory']
+
         output_size = layout.labels[self._label_key].attrs
 
         layout.node_sets[node_key].attrs[attr_key] = output_size

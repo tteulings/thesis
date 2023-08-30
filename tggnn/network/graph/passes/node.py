@@ -26,7 +26,6 @@ class NodePass(GraphModule[TG_Data], Generic[TG_Data]):
         for node_key, configs in self._update_configs.items():
       
             node_set = data.node_sets[node_key]
-    
             messages = (
                 edge_set.index.gather(edge_set.attr, aggr)
                 for edge_set, aggr in map(
@@ -39,6 +38,7 @@ class NodePass(GraphModule[TG_Data], Generic[TG_Data]):
                 if edge_set.attr is not None
             )
             # print(configs, node_key)
+            print(node_key,  configs.items())
             for attr_key, config in configs.items():
                 if node_key == 'centroid' and attr_key == 'velocity':
                     # print(configs)
@@ -47,6 +47,8 @@ class NodePass(GraphModule[TG_Data], Generic[TG_Data]):
 
                 if node_key == 'centroid' and attr_key == 'memory':
                     attr = config.function.forward(node_set[attr_key].attr, messages, node_set['velocity'].attr)
+
+
                 else:
                     # print(attr_key)
                     attr = config.function(node_set[attr_key].attr, messages)

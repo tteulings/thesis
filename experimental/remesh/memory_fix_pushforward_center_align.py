@@ -68,7 +68,7 @@ eps = 1e-8
 
 # Setup the network
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-device= 'cpu'
+
 model, state = bubble_memory_model(
     dataset.layout(), args.latent_size, args.num_layers, args.iterations
 )
@@ -112,7 +112,7 @@ torch.cuda.empty_cache()
 # Gather normalizer statistics
 model.train()
 
-center_normalizer =  torch.tensor([1*10**6, .1*10**7, .25*10**5])
+center_normalizer =  torch.tensor([1*10**6, .1*10**7, .8*10**6])
 
 # center_normalizer =  torch.tensor([.7*10**7, .35*10**7, .5*10**5])
 
@@ -167,11 +167,10 @@ def train(
             ui = 0
 
             sequence.set_rotation_matrix(np.diag([1.0,1.0,1.0]))
-            # rotation_matrix = rotation_matrix_to_diag(sequence[0].center_velocity)
             rotation_matrix = rotation_matrix_to_y_axis(sequence[0].center_velocity)
 
             sequence.set_rotation_matrix(rotation_matrix)
-
+            u =50
             # print(psutil.Process(os.getpid()).memory_info().rss / 1024 ** 2)
             for (count, bubble) in enumerate(sequence):
                 print('\nstart')
@@ -190,7 +189,7 @@ def train(
                     # velocities_ground_truth.append(bubble.center_velocity)
                 elif ui >  0 and (ui) ==  u:
                     print(count,'new_bubble')
-                    u = max(1, np.random.choice(list(range(int(args.tbptt*0.1), args.tbptt))   ))
+                    # u = max(1, np.random.choice(list(range(int(args.tbptt*0.1), args.tbptt))   ))
                     ui = 0
 
                     if transform is not None:
@@ -215,7 +214,7 @@ def train(
                 current.to(device)
 
    
-                centroid['velocity'].attr = (current.center_velocity.to(device)*center_normalizer.to(device)).reshape(1,3)
+                centroid['velocity'].attr = current.center_velocity.to(device).reshape((1,3))*center_normalizer.to(device)
                 
                 state = center_memory(current, state)
 
@@ -228,7 +227,7 @@ def train(
                 label = out.labels["target"]
 
                 error = ((bubble.center_target.to(center_out.device)*center_normalizer.to(center_out.device)-center_out.reshape(3))**2)
-                print('targetttt',bubble.center_target.to(center_out.device)*center_normalizer.to(center_out.device))
+                # print(bubble.center_target.to(center_out.device)*center_normalizer.to(center_out.device))
                 # current.update(
                 #     model._label_normalizers["target"].inverse(label), False
                 # )
@@ -236,7 +235,7 @@ def train(
                 one_step_loss = F.mse_loss(pred, label)
                 one_step_center_loss = F.mse_loss(bubble.center_target.to(center_out.device)*center_normalizer.to(center_out.device), center_out.reshape(3))
 
-                # loss += one_step_center_loss  + one_step_loss
+                # loss += one_step_center_loss  + 0.001*one_step_loss
                 loss += one_step_center_loss
 
                 train_loss += float(one_step_center_loss.item())
@@ -261,7 +260,7 @@ def train(
 
 
 
-                if (u - ui) >= 5  or  ui == u-1:
+                if (u - ui) >= 15  or  ui == u-1:
                     print('detach')
                     # TODO: I would rather use the inplace `detach_()`. However, I
                     # have a feeling that it doesn't have the same effect on the
@@ -284,7 +283,7 @@ def train(
                 current_centroid = current.centroid(True)
 
                 current.update(
-                    model._label_normalizers["target"].inverse(pred.detach()), False, center_out / center_normalizer.to(center_out.device),rotation_matrix
+                    model._label_normalizers["target"].inverse(pred.detach()), False, center_out.detach() / center_normalizer.to(center_out.device)
                 )
 
                 # current.update(
@@ -310,7 +309,7 @@ def train(
 
                 wandb.log({'u': u, 'loss_x': error[0], 'loss_y': error[1], 'loss_z': error[2], 'epoch': model.epoch, 'bubble_num': si+1,'velocity_centroid_x2': vel_center_pred[ 0], 'velocity_centroid_y2': vel_center_pred[1], 'velocity_centroid_z2': vel_center_pred[ 2],  'velocity_centroid_x': vel_pred[ 0], 'velocity_centroid_y': vel_pred[1], 'velocity_centroid_z': vel_pred[ 2], 'true_velocity_centroid_x': vel_true[ 0], 'true_velocity_centroid_y': vel_true[1], 'true_velocity_centroid_z': vel_true[ 2]})
                 ui+=1
-                if count > 500:
+                if count > 1000:
                     break
 
 

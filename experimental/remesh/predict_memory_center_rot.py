@@ -75,6 +75,7 @@ def load_data(bubble_id, steps):
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+# device = 'cpu'
 model, state = bubble_memory_model(
     dataset.layout(), args.latent_size, args.num_layers, args.iterations
 )
@@ -91,56 +92,82 @@ else:
 
 center_normalizer =  torch.tensor([.7*10**7, .35*10**7, .5*10**5], device='cuda:0')
 
+center_normalizer =  torch.tensor([1*10**6, .1*10**7, 1*10**6])
+center_normalizer =  torch.tensor([1*10**6, .1*10**7, .8*10**6])
 
 
 dataset.set_rotation_matrix(np.diag([1.0,1.0,1.0]))
 # rotation_matrix = rotation_matrix_to_diag(sequence[0].center_velocity)
-rotation_matrix = rotation_matrix_to_y_axis(dataset[args.bubble_id - 100].center_velocity)
-
+print(dataset[0].center_velocity)
+rotation_matrix = rotation_matrix_to_y_axis(dataset[0].center_velocity)
+# rotation_matrix = rotation_matrix_to_diag(dataset[args.bubble_id - 100].center_velocity)
+print(rotation_matrix)
 dataset.set_rotation_matrix(rotation_matrix)
+centroid = state.node_sets["centroid"]
+
+
+centroid["memory"].attr = torch.ones_like(centroid["memory"].attr)
 
 
 with torch.no_grad():
-    for id in range(args.bubble_id - 100, args.bubble_id):
+    for id in range(args.bubble_id - 0, args.bubble_id):
         print(f"Preparing hidden: {id}")
         bubble = dataset[id]
         bubble.to(device)
 
-        _, state, _ = model.forward(bubble, center_memory(bubble, state))
+#         print(bubble.center_velocity.to(device).reshape((1,3))*center_normalizer.to(device), bubble.center_target.to(device).reshape((1,3))
+# )
+#         print(bubble.center_velocity)
+        if id  == 0:
+            state.node_sets['centroid']['velocity'].attr = bubble.center_velocity.to(device).reshape((1,3))
+        # print(state.node_sets['centroid']['velocity'].attr)
+        out, state, center_out = model.forward(bubble, center_memory(bubble, state))
 
-
+        print(center_out, bubble.center_target.to(device).reshape((1,3))*center_normalizer.to(device), bubble.center_velocity)
+        state.node_sets['centroid']['velocity'].attr = bubble.center_target.to(device).reshape((1,3))*center_normalizer.to(device).reshape(1,3)
+        print()
+        # break
+    
 
     bubble = dataset[args.bubble_id]
     bubble.to(device)
 
     first = True
+    state.node_sets['centroid']['velocity'].attr = bubble.center_velocity.to(device).reshape((1,3))*center_normalizer.to(device).reshape(1,3)
 
     for id in range(args.bubble_id, args.bubble_id + args.steps):
         gc.collect()
         c_bubble_og = bubble.centroid()
 
-    
-        state.node_sets['centroid']['velocity'].attr = bubble.center_velocity.to(device).reshape((1,3))*center_normalizer.to(device)
+        print(id)
+        # print(centroid['velocity'].attr, centroid["memory"].attr)
 
+    
         out, state, center_out = model.forward(
             deepcopy(bubble), center_memory(bubble, state)
         )
+
+        print(center_out, bubble.center_target.to(device).reshape((1,3))*center_normalizer.to(device), bubble.center_velocity)
 
         delta = model._label_normalizers["target"].inverse(
             out.node_sets["bubble"]["velocity"].attr
         )
 
-        bubble.update(delta, True, center_out/center_normalizer)
+        bubble.update(delta, True, center_out/center_normalizer.to(device))
+        state.node_sets['centroid']['velocity'].attr = bubble.center_velocity.to(device).reshape((1,3))*center_normalizer.to(device).reshape(1,3)
+        print(center_out, bubble.center_target.to(device).reshape((1,3))*center_normalizer.to(device), bubble.center_velocity)
+        # if id > 1:
+        #     break
 
         if first:
-            print(f"One step MSE: {mse_loss(delta, bubble.labels['target'])}")
-            print(
-                "Relative error:",
-                (
-                    (delta - bubble.labels["target"]).abs()
-                    / bubble.labels["target"].abs()
-                ).mean(dim=0),
-            )
+            # print(f"One step MSE: {mse_loss(delta, bubble.labels['target'])}")
+            # print(
+            #     "Relative error:",
+            #     (
+            #         (delta - bubble.labels["target"]).abs()
+            #         / bubble.labels["target"].abs()
+            #     ).mean(dim=0),
+            # )
 
             first = False
 
@@ -152,12 +179,13 @@ with torch.no_grad():
 
         c_bubble = bubble.centroid()
         c_next = next.centroid()
+        print('center', bubble.centroid(), c_next)
 
         # c_vel = (c_next - c_bubble) / dataset._config.dt
         # c_vel = bubble.node_sets["bubble"]["velocity"].attr.mean(dim=0)
         c_vel = c_bubble - c_bubble_og.to(c_bubble.device)
         c_true_vel = dataset[id + 1].centroid() - dataset[id].centroid()
-
+        c_true_vel =  dataset[id].center_target
         pts_loss = point_to_surface_loss(
             (bubble.positions - c_bubble).float(),
             (next.positions - c_next).float(),
@@ -165,13 +193,14 @@ with torch.no_grad():
         )
 
         trans_loss = mse_loss(c_bubble, c_next)
-        center_out/=center_normalizer
+        center_out/=center_normalizer.to(device)
         wandb.log({'id': id, 'p2s_loss':pts_loss, 'trans_loss': trans_loss, 'c_true_vel_x': c_true_vel[0], 'c_true_vel_y': c_true_vel[1], 'c_true_vel_z': c_true_vel[2], 'c_veloc_x': c_vel[0], 'c_veloc_y': c_vel[1], 'c_veloc_z': c_vel[2], 'c_velo_x': center_out[0][0], 'c_velo_y': center_out[0][1], 'c_velo_z': center_out[0][2]})
         print(
             f"{id * dataset._config.dt},{trans_loss.item()},{pts_loss.item()},"
             f"{c_bubble[0].item()},{c_bubble[1].item()},{c_bubble[2].item()},"
             f"{c_vel[0].item()},{c_vel[1].item()},{c_vel[2].item()}"
         )
+        print()
         sys.stdout.flush()
         bubble.as_stl().save(
             path + f"/pred_{id}.stl"

@@ -53,6 +53,8 @@ _remesh.argtypes = [
     ctypes.c_int,
 ]
 
+_free_remesh_output = _lib.free_remesh_output
+_free_remesh_output.argtypes = [_RemeshOutput]
 
 def remesh(
     config: SimulationConfig,
@@ -90,4 +92,13 @@ def remesh(
         bubble.instructions, shape=(bubble.num_instr, 16)
     )
 
+    ret_pos = np.copy(np.ctypeslib.as_array(bubble.positions, shape=(bubble.num_nodes, 3)))
+    ret_faces = np.copy(np.ctypeslib.as_array(bubble.markpos, shape=(bubble.num_cells, 3)))
+    ret_connect = np.copy(np.ctypeslib.as_array(bubble.connect, shape=(bubble.num_cells, 3)))
+    instructions = np.copy(np.ctypeslib.as_array(bubble.instructions, shape=(bubble.num_instr, 16)))
+
+    _free_remesh_output(bubble)
+
+
+    # _free_remesh_output(bubble)
     return RemeshResult(ret_pos, ret_faces, ret_connect, instructions)

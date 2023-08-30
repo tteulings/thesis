@@ -29,7 +29,7 @@ class VectorAdam(torch.optim.Optimizer):
                 # print(group)
 
                 if p.grad == None:
-                    print(p)
+                    # print(p)
                     continue
                 # print(p.grad)
                 grad = p.grad.data

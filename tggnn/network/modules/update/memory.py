@@ -22,10 +22,9 @@ class MemoryUpdateImpl(UpdateModuleImpl):
         messages: Iterable[Tensor],
         center_velocity: Tensor,
     ) -> Tensor:
-        print(center_velocity.shape)
         
-
-        return self._gru.forward(torch.cat([*messages, center_velocity], 1), node_attr)
+        print('Update mem')
+        return self._gru.forward(torch.cat([center_velocity], 1), node_attr)
 
 
 class MemoryUpdate(UpdateModule):
@@ -36,7 +35,7 @@ class MemoryUpdate(UpdateModule):
  
         return (
             MemoryUpdateImpl(
-                2*sum(
+                sum(
                     (
                         layout.edge_sets[edge_key].attrs
                         for edge_key in node_set.edge_sets

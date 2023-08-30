@@ -104,6 +104,8 @@ def bubble_memory_model(
                     update=DenseCentroidUpdate(hiddens),
 
                     decoder=DenseCentroidDecoder(decode_hiddens, "target"),
+                    normalizer=None,
+
 
                 )
 

@@ -20,6 +20,8 @@ class _ReplayOutput(ctypes.Structure):
         ("connect", ctypes.POINTER(ctypes.c_int32)),
     ]
 
+_free_remesh_output = _lib.free_replay_output
+_free_remesh_output.argtypes = [_ReplayOutput]
 
 class ReplayResult:
     def __init__(
@@ -90,5 +92,13 @@ def replay(
     ret_connect = np.ctypeslib.as_array(
         bubble.connect, shape=(bubble.num_cells, 3)
     )
+
+    
+    ret_pos = np.copy(np.ctypeslib.as_array(bubble.positions, shape=(bubble.num_nodes, 3)))
+    ret_faces = np.copy(np.ctypeslib.as_array(bubble.markpos, shape=(bubble.num_cells, 3)))
+    ret_connect = np.copy(np.ctypeslib.as_array(bubble.connect, shape=(bubble.num_cells, 3)))
+
+    _free_remesh_output(bubble)
+
 
     return ReplayResult(ret_pos, ret_faces, ret_connect)

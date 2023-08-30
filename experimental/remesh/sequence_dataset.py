@@ -37,19 +37,20 @@ class BubbleSequence(TypedGraphDataset[Bubble]):
         center_prediction: bool = False
     ) -> None:
         super().__init__(root, transforms)
+        self._root = root
 
-        with open(path.join(root, "config.json")) as config_file:
+        with open(path.join(self._root, "config.json")) as config_file:
             self._config = cast(
                 SimulationConfig, jsonpickle.decode(config_file.read())
             )
 
-        self._db = sqlite3.connect(path.join(root, "bubble.db"))
-
+        self._db = sqlite3.connect(path.join(self._root, "bubble.db"))
         self._sequence_id = sequence_id
 
         base_id = self._db.execute(
             "SELECT SUM(length) FROM sequence WHERE id < ?", [self._sequence_id]
         ).fetchone()[0]
+        # self._db.close()
 
         self._base_id = 0 if base_id is None else base_id
 
@@ -66,9 +67,12 @@ class BubbleSequence(TypedGraphDataset[Bubble]):
 
     def __len__(self) -> int:
         print(self._sequence_id)
-        return self._db.execute(
+        # self._db = sqlite3.connect(path.join(self._root, "bubble.db"))
+        query_return = self._db.execute(
             "SELECT length FROM sequence WHERE id = ?", [self._sequence_id]
         ).fetchone()[0]
+        # self._db.close()
+        return query_return
 
 
 
@@ -76,7 +80,10 @@ class BubbleSequence(TypedGraphDataset[Bubble]):
 
     def __get__(self, idx: int) -> Bubble:
 
- 
+        # print('get??')
+        # self._db = sqlite3.connect(path.join(self._root, "bubble.db"))
+
+        # print(self._db)
         faces, connect, prev, cur, next = (
             np.load(io.BytesIO(bytes))
             
@@ -85,6 +92,7 @@ class BubbleSequence(TypedGraphDataset[Bubble]):
             ).fetchone()
         )
 
+        # self._db.close()
 
         return Bubble(
             self._config,
@@ -115,12 +123,12 @@ class BubbleSequenceDataset(Dataset[BubbleSequence]):
 
         self._root = root
         self._transforms = transforms
-        with open(path.join(root, "layout.json"), "r") as file:
+        with open(path.join(self._root, "layout.json"), "r") as file:
             self._layout = cast(
                 TypedGraphLayout, jsonpickle.decode(file.read())
             )
 
-        self._db = sqlite3.connect(path.join(root, "bubble.db"))
+        self._db = sqlite3.connect(path.join(self._root, "bubble.db"))
 
         self._remesh_velocity = remesh_velocity
         self._target_acceleration = target_acceleration
@@ -139,7 +147,8 @@ class BubbleSequenceDataset(Dataset[BubbleSequence]):
         return len(self._sequences)
 
     def __getitem__(self, index: int) -> BubbleSequence:
-        print(self._sequences[index])
+        # print(self._sequences[index])
+        
         return BubbleSequence(
             self._root,
             self._sequences[index],

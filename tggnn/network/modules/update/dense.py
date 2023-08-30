@@ -30,6 +30,27 @@ class DenseUpdateImpl(UpdateModuleImpl):
         return self.mlp(torch.cat([node_attr, *messages], 1))
 
 
+class DenseUpdateImpl(UpdateModuleImpl):
+    mlp: Sequential
+
+    def __init__(
+        self,
+        layout: List[int],
+        activate_final: bool,
+        normalize: bool,
+    ) -> None:
+        super().__init__()
+        print('update')
+        self.mlp = make_mlp(layout, activate_final, normalize)
+
+    def forward(
+        self,
+        node_attr: Tensor,
+        messages: Iterable[Tensor],
+    ) -> Tensor:
+        return self.mlp(torch.cat([node_attr, *messages], 1))
+
+
 class DenseUpdate(UpdateModule):
     _layout: List[int]
     _activate_final: bool
@@ -96,6 +117,12 @@ class DenseCentroidUpdate(UpdateModule):
         node_attrs = node_set.attrs[attr_key]
 
         input_size = node_attrs + layout.node_sets['centroid'].attrs['memory']
+
+        # Angle 45
+        input_size = layout.node_sets['centroid'].attrs['memory'] + 3
+
+        # angle
+        input_size = layout.node_sets[node_key].attrs[attr_key] + layout.node_sets['centroid'].attrs['memory']
 
         node_set.attrs[attr_key] = self._layout[-1]
 
